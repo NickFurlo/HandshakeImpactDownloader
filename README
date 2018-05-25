@@ -1,0 +1,28 @@
+Handshake Impact Downloader
+	This script will pull csv files from handshakes insight data, survey results, and event results in bulk
+
+Getting Started
+	Edit the config file to include the address of the CSV. Then double click the Exe file to run the automatic downloader.
+
+Config File
+	The config file will be created upon first run. The following fields will be available.
+
+	USERNAME: Username to be entered into handshake.
+	PASSWORD: Passwrod to be entered into handshake.
+	INPUT_CSV_FILE_PATH: Filename or path to csv file containing links
+	NUMBER_OF_ROWS: The number of rows including the header.
+	DOWNLOAD_LOCATION: Path to download location of CSV's
+
+
+Prerequisites
+	For Portable : Google Chrome
+	For Python: Google Chrome, Pythonn 3.6.5, Selenium (Python -m pip install selenium), tqdm(Python -m pip install tqdm)
+
+Versioning
+	Version 1.0
+
+Authors
+	Nick Furlo
+
+License
+	The GNU General Public License v3.0
