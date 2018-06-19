@@ -11,6 +11,9 @@ from datetime import datetime
 from pathlib import Path
 from tkinter import *
 from tkinter import messagebox
+
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.wait import WebDriverWait
 from tqdm import tqdm
 from selenium import webdriver
 from selenium.common.exceptions import WebDriverException
@@ -71,23 +74,31 @@ def download_insight_data(url):
 
     # send shortcut to open download dialog
     try:
-        driver.find_element_by_tag_name('body').click()
+        body = driver.find_element_by_tag_name('body')
+        body.click()
     except:
         error_count += 1
         print("error at body click")
+
     try:
-        driver.find_element_by_tag_name('body').send_keys(Keys.CONTROL + Keys.SHIFT + 'l')
+        body.send_keys(Keys.CONTROL + Keys.SHIFT + 'l')
+
     except:
         error_count += 1
         print("error at shortcut")
     wait_for_ajax(driver)
     time.sleep(1)
     try:
-        driver.find_element_by_xpath(
-            '//*[@id="lk-layout-embed"]/div[4]/div/div/form/div[2]/div[4]/div/div[2]/label').click()
+        # Old method
+        # driver.find_element_by_xpath(
+        #    '//*[@id="lk-layout-embed"]/div[4]/div/div/form/div[2]/div[4]/div/div[2]/label').click()
+
+        # New method of waiting for page
+        waiter = wait_for_page_by_name('qr-export-modal-limit')
+        waiter.click()
+
     except:
-        print("Couldn't find 'all results' radio button")
-        error_count += 1
+        print("Couldn't find 'all results' radio button. Will try again,")
 
     # If Appointments insight, use custom row value
     try:
@@ -107,8 +118,10 @@ def download_insight_data(url):
     try:
         driver.find_element_by_xpath(
             '//*[@id="lk-layout-embed"]/div[4]/div/div/form/div[2]/div[4]/div/div[2]/label').click()
+        print("Found 'all results' radio button.")
     except:
         print("Still couldn't find 'all results' radio button")
+        error_count += 1
     time.sleep(1)
     try:
         driver.find_element_by_id('qr-export-modal-download').click()
@@ -130,7 +143,6 @@ def download_survey_data(url, driver):
     wait_for_ajax(driver)
     try:
         driver.find_element_by_xpath('//*[@id="ui-id-2"]/div[2]/div[1]/div/a[4]').click()
-
     except:
         print("Couln't find download button")
     while 'Your download is ready' not in driver.page_source:
@@ -235,6 +247,27 @@ def wait_for_ajax(driver):
         except WebDriverException:
             print('WebDriverException')
     time.sleep(4)
+
+
+# wait for element with name to be visible, return waiter
+def wait_for_page_by_name(name):
+    element = WebDriverWait().until(driver.visibility_of_element_located((By.NAME, name)))
+    print(type("element type: " + element))
+    return element
+
+
+# wait for element with tag name to be visible, return waiter
+def wait_for_page_by_tag_name(tag_name):
+    element = WebDriverWait().until(driver.visibility_of_element_located((By.TAG_NAME, tag_name)))
+    print(type("element type: "+element))
+    return element
+
+
+# wait for element with xpath to be visible, return waiter
+def wait_for_page_by_xpath(xpath):
+    element = WebDriverWait().until(driver.visibility_of_element_located((By.XPATH, xpath)))
+    print(type("element type: " + element))
+    return element
 
 
 # Create main menu gui
