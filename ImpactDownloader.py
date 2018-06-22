@@ -89,7 +89,6 @@ def download_insight_data(url):
         # New method of waiting for page
         print("starting waiter")
         waiter = wait_for_page('name', 'qr-export-modal-limit')
-        print("waiter type: " + str(type(waiter)))
         waiter.click()
     except:
         print("Couldn't find 'all results' radio button. Will try again,")
