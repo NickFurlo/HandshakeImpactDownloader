@@ -14,6 +14,7 @@ from tkinter import messagebox
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from tqdm import tqdm
 from selenium import webdriver
 from selenium.common.exceptions import WebDriverException
@@ -61,24 +62,24 @@ def download_insight_data(url):
     global error_count, download_count
     driver.get(url)
     # look at insights frame
-    driver.switch_to.frame(find_element(driver, 'tag_name', 'iframe', 'Could not find iframe', True))
+    driver.switch_to.frame(find_element(driver, 'tag_name', 'iframe', 'Could not find iframe', True, False, False))
 
     # wait for insights page to load
     while 'visualization' not in driver.page_source:
         time.sleep(1)
         print('waiting for page load...')
-    wait_for_ajax(driver)
+    #wait_for_ajax(driver)
     time.sleep(2)
 
     # send shortcut to open download dialog
-    body = find_element(driver, 'tag_name', 'body', 'error at body click', True)
+    body = find_element(driver, 'tag_name', 'body', 'error at body click', True, False, False)
     body.click()
     try:
         body.send_keys(Keys.CONTROL + Keys.SHIFT + 'l')
     except:
         error_count += 1
         print("error at shortcut")
-    wait_for_ajax(driver)
+    #wait_for_ajax(driver)
     time.sleep(1)
     try:
         # Old method
@@ -86,7 +87,9 @@ def download_insight_data(url):
         #    '//*[@id="lk-layout-embed"]/div[4]/div/div/form/div[2]/div[4]/div/div[2]/label').click()
 
         # New method of waiting for page
-        waiter = wait_for_page_by_name('qr-export-modal-limit')
+        print("starting waiter")
+        waiter = wait_for_page('name', 'qr-export-modal-limit')
+        print("waiter type: " + str(type(waiter)))
         waiter.click()
     except:
         print("Couldn't find 'all results' radio button. Will try again,")
@@ -107,7 +110,7 @@ def download_insight_data(url):
     except:
         print("couldn't enter custom rows for appointments ")
     find_element(driver, 'xpath', '//*[@id="lk-layout-embed"]/div[4]/div/div/form/div[2]/div[4]/div/div[2]/label',
-                 "Still couldn't find 'all results' radio button", True).click()
+                 "Still couldn't find 'all results' radio button", True, False, True)
     print("Found 'all results' radio button.")
     time.sleep(1)
     try:
@@ -127,14 +130,15 @@ def download_survey_data(url, driver):
     global download_count
     time.sleep(1)
     driver.get(url)
-    wait_for_ajax(driver)
-    find_element(driver, 'xpath', '//*[@id="ui-id-2"]/div[2]/div[1]/div/a[4]', 'could not find download button', False)
+    #wait_for_ajax(driver)
+    #find_element(driver, 'xpath', '//*[@id="ui-id-2"]/div[2]/div[1]/div/a[4]', 'could not find download button', False, True, True)
+    driver.find_element_by_xpath('//*[@id="ui-id-2"]/div[2]/div[1]/div/a[4]').click()
     while 'Your download is ready' not in driver.page_source:
         time.sleep(1)
-    find_element(driver, 'xpath', '//*[@id="download-wait-modal"]/div[2]/div/div[2]/div/span[1]/p[1]/a',
-                 'Missed survey download', True).click()
+    #find_element(driver, 'xpath', '//*[@id="download-wait-modal"]/div[2]/div/div[2]/div/span[1]/p[1]/a','Missed survey download', True, False, True)
+    driver.find_element_by_xpath('//*[@id="download-wait-modal"]/div[2]/div/div[2]/div/span[1]/p[1]/a').click()
     download_count += 1
-    time.sleep(60)
+    #time.sleep(60)
     driver.close()
 
 
@@ -143,14 +147,14 @@ def download_event_data(url, driver):
     global download_count
     time.sleep(1)
     driver.get(url)
-    wait_for_ajax(driver)
+    #wait_for_ajax(driver)
     time.sleep(5)
-    find_element(driver, 'xpath', '//*[@id="search-form"]/div/div[2]/div/div[1]/div/a/i',
-                 "Could not find the download button", False)
+    #find_element(driver, 'xpath', '//*[@id="search-form"]/div/div[2]/div/div[1]/div/a',"Could not find the download button", False, True, True)
+    driver.find_element_by_xpath('//*[@id="search-form"]/div/div[2]/div/div[1]/div/a').click()
     while 'Your download is ready' not in driver.page_source:
         time.sleep(1)
-    find_element(driver, 'xpath', '//*[@id="download-wait-modal"]/div[2]/div/div[2]/div/span[1]/p[1]/a',
-                 'Missed event download', True).click()
+    #find_element(driver, 'xpath', '//*[@id="download-wait-modal"]/div[2]/div/div[2]/div/span[1]/p[1]/a','Missed event download', True, False, True)
+    driver.find_element_by_xpath('//*[@id="download-wait-modal"]/div[2]/div/div[2]/div/span[1]/p[1]/a').click()
     download_count += 1
     time.sleep(60)
     driver.close()
@@ -172,8 +176,7 @@ def download_all(my_dict):
             survey_thread = threading.Thread(target=download_survey_data, args=(my_dict[i], driver2,))
             survey_thread.daemon = True
             survey_thread.start()
-            """ download_survey_data(my_dict[i])
-            window_number += 1"""
+
         elif 'events' in my_dict.get(i):
             if download_file_path is not "":
                 driver2 = change_download_location(download_file_path)
@@ -183,8 +186,7 @@ def download_all(my_dict):
             event_thread = threading.Thread(target=download_event_data, args=(my_dict[i], driver2,))
             event_thread.daemon = True
             event_thread.start()
-            """download_event_data(my_dict[i])
-            window_number += 1"""
+
         else:
             print("could not download" + str(i))
 
@@ -196,19 +198,17 @@ def download_all(my_dict):
 # fill login form with data from config file
 def login(driver):
     driver.get('https://oakland.joinhandshake.com/login')
-    find_element(driver, 'xpath', '//*[@id="main"]/div[1]/div[2]/div[2]/a/div[2]', 'missed first login button',
-                 True).click()
+    driver.find_element_by_xpath('//*[@id="main"]/div[1]/div[2]/div[2]/a/div[2]').click()
+    # find_element(driver, 'xpath', '//*[@id="main"]/div[1]/div[2]/div[2]/a/div[2]', 'Missed body on first login page', False, True, True)
     driver.find_element_by_id('username').send_keys(username, Keys.TAB)
     driver.find_element_by_id('password').send_keys(password, Keys.ENTER)
-    # find_element(driver, 'id', 'username', 'Error at username entry', True).send_keys(username, Keys.TAB)
-    # find_element(driver, 'id', 'password', 'Error at password entry', True).send_keys(password, Keys.ENTER)
     while 'Student Activity Snapshot' not in driver.page_source:
         time.sleep(1)
     return
 
 
 # wait for ajax to finish
-def wait_for_ajax(driver):
+"""def wait_for_ajax(driver):
     done = False
     while not done:
         try:
@@ -220,28 +220,41 @@ def wait_for_ajax(driver):
             done = True
         except WebDriverException:
             print('WebDriverException')
-    time.sleep(4)
+    time.sleep(4)"""
 
 
-# wait for element with name to be visible, return waiter
-def wait_for_page_by_name(name):
-    element = WebDriverWait().until(driver.visibility_of_element_located((By.NAME, name)))
-    print(type("element type: " + element))
-    return element
+# Called by find_element() and used to wait until a specific element is loaded.
+def wait_for_page(type, name):
+    if type.lower() == 'name':
+        #print("Presence of element: " + str(driver.find_element_by_name(name).is_displayed()))
+        # WebDriverWait().until(driver, driver.find_element_by_name(name).is_displayed())
+        WebDriverWait(driver, 300).until(EC.visibility_of_element_located((By.NAME, name)))
+        return # print('wait_for_page success')
 
+    elif type.lower() == 'xpath':
+        #print("Presence of element: " + str(driver.find_element_by_xpath(name).is_displayed()))
+        # WebDriverWait().until(driver, driver.find_element_by_xpath(name).is_displayed())
+        WebDriverWait(driver, 300).until(EC.visibility_of_element_located((By.XPATH, name)))
+        return # print('wait_for_page success')
 
-# wait for element with tag name to be visible, return waiter
-def wait_for_page_by_tag_name(tag_name):
-    element = WebDriverWait().until(driver.visibility_of_element_located((By.TAG_NAME, tag_name)))
-    print(type("element type: " + element))
-    return element
+    elif type.lower() == 'tag_name':
+        #print("Presence of element: " + str(driver.find_element_by_tag_name(name).is_displayed()))
+        # WebDriverWait().until(driver, driver.find_element_by_tag_name(name).is_displayed())
+        WebDriverWait(driver, 300).until(EC.visibility_of_element_located((By.TAG_NAME, name)))
+        return # print('wait_for_page success')
 
-
-# wait for element with xpath to be visible, return waiter
-def wait_for_page_by_xpath(xpath):
-    element = WebDriverWait().until(driver.visibility_of_element_located((By.XPATH, xpath)))
-    print(type("element type: " + element))
-    return element
+    elif type.lower() == 'id':
+        #print("Presence of element: " + str(driver.find_element_by_id(name).is_displayed()))
+        # WebDriverWait().until(driver, driver.find_element_by_id(name).is_displayed())
+        WebDriverWait(driver, 300).until(EC.presence_of_element_located((By.ID, name)))
+        return # print('wait_for_page success')
+    elif type.lower() == 'class_name':
+        #print("Presence of element: " + str(driver.find_element_by_class_name(name).is_displayed()))
+        # WebDriverWait().until(driver, driver.find_element_by_id(name).is_displayed())
+        WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.class_name, name)))
+        return # print('wait_for_page success')
+    else:
+        return -'1'
 
 
 # Create main menu gui
@@ -285,40 +298,79 @@ def change_download_location(download_location):
     return webdriver.Chrome(executable_path='chromedriver.exe', chrome_options=options)
 
 
-def find_element(driver, type, name, message, increase_error):
+# Runs driver.find_element_by_TYPE(name) surrounded by error handling.
+# driver is driver to be used, type is the type of element, name is the
+# element location data, message is error to be printed to console,
+# increase error is boolean that decides to increment error counter
+def find_element(driver, type, name, message, increase_error, recurse, click):
     time.sleep(1)
     if type.lower() == 'tag_name':
-        element = ''
         try:
-            element = driver.find_element_by_tag_name(name)
-            return element
+            wait_for_page('tag_name', name)
+            if click:
+                return driver.find_element_by_tag_name(name).click()
+            return driver.find_element_by_tag_name(name)
         except:
-            if message =="Still couldn't find 'all results' radio button":
-                find_element(driver, type, name, message, increase_error)
             print(message)
+            if recurse:
+                find_element(driver, type, name, message, increase_error, recurse, click)
+            if increase_error:
+                error_count += 1
+            return '-1'
+    elif type.lower() == 'name':
+        try:
+            wait_for_page('name', name)
+            if click:
+                return driver.find_element_by_name(name).click()
+            return driver.find_element_by_name(name)
+        except:
+            print(message)
+            if recurse:
+                find_element(driver, type, name, message, increase_error, recurse, click)
             if increase_error:
                 error_count += 1
             return '-1'
 
     elif type.lower() == 'xpath':
         try:
-            element =driver.find_element_by_xpath(name)
-            return element
+            print('looking for xpath')
+            wait_for_page('xpath', name)
+            if click:
+                return driver.find_element_by_xpath(name).click()
+            return driver.find_element_by_xpath(name)
+
         except:
-            if message == "Still couldn't find 'all results' radio button":
-                find_element(driver, type, name, message, increase_error)
             print(message)
+            if recurse:
+                find_element(driver, type, name, message, increase_error, recurse, click)
             if increase_error:
                 error_count += 1
             return '-1'
     elif type.lower() == 'id':
         try:
-            element = driver.find_element_by_xpath(name)
-            return element
+            wait_for_page('id', name)
+            if click:
+                return driver.find_element_by_id(name).click()
+            return driver.find_element_by_id(name)
+
         except:
-            if message == "Still couldn't find 'all results' radio button":
-                find_element(driver, type, name, message, increase_error)
             print(message)
+            if recurse:
+                find_element(driver, type, name, message, increase_error, recurse, click)
+            if increase_error:
+                error_count += 1
+            return '-1'
+    elif type.lower() == 'class_name':
+        try:
+            wait_for_page('id', name)
+            if click:
+                return driver.find_element_by_class_name(name).click()
+            return driver.find_element_by_class_name(name)
+
+        except:
+            print(message)
+            if recurse:
+                find_element(driver, type, name, message, increase_error, recurse, click)
             if increase_error:
                 error_count += 1
             return '-1'
@@ -375,8 +427,8 @@ def main():
         download_all(missed_urls)
     time.sleep(60)
     rename_files()
-    print(str(download_count) + " of " + str(len(csv)) + " files downloaded"+"\nFiles saved to "+str(download_file_path))
-
+    print(str(download_count) + " of " + str(len(csv)) + " files downloaded" + "\nFiles saved to " + str(
+        download_file_path))
 
 
 # define and initialize global variables
