@@ -1,6 +1,7 @@
 # Impact Downloader script by Nick Furlo 5/21/18
 import configparser
 import csv
+import fnmatch
 import glob
 import itertools
 import os
@@ -8,6 +9,8 @@ import threading
 import time
 import tkinter
 from datetime import datetime
+from os import listdir
+from os.path import isfile, join
 from pathlib import Path
 from tkinter import *
 from tkinter import messagebox
@@ -68,7 +71,6 @@ def download_insight_data(url):
     while 'visualization' not in driver.page_source:
         time.sleep(1)
         print('waiting for page load...')
-    #wait_for_ajax(driver)
     time.sleep(2)
 
     # send shortcut to open download dialog
@@ -79,7 +81,6 @@ def download_insight_data(url):
     except:
         error_count += 1
         print("error at shortcut")
-    #wait_for_ajax(driver)
     time.sleep(1)
     try:
         # Old method
@@ -87,9 +88,9 @@ def download_insight_data(url):
         #    '//*[@id="lk-layout-embed"]/div[4]/div/div/form/div[2]/div[4]/div/div[2]/label').click()
 
         # New method of waiting for page
-        print("starting waiter")
-        waiter = wait_for_page('name', 'qr-export-modal-limit')
-        waiter.click()
+        wait_for_page('name', 'qr-export-modal-limit')
+        find_element(driver, 'xpath', '//*[@id="lk-layout-embed"]/div[4]/div/div/form/div[2]/div[4]/div/div[2]/label',
+                     "Couldn't find 'all results' radio button", True, False, True)
     except:
         print("Couldn't find 'all results' radio button. Will try again,")
 
@@ -129,33 +130,32 @@ def download_survey_data(url, driver):
     global download_count
     time.sleep(1)
     driver.get(url)
-    #wait_for_ajax(driver)
-    #find_element(driver, 'xpath', '//*[@id="ui-id-2"]/div[2]/div[1]/div/a[4]', 'could not find download button', False, True, True)
     driver.find_element_by_xpath('//*[@id="ui-id-2"]/div[2]/div[1]/div/a[4]').click()
     while 'Your download is ready' not in driver.page_source:
         time.sleep(1)
-    #find_element(driver, 'xpath', '//*[@id="download-wait-modal"]/div[2]/div/div[2]/div/span[1]/p[1]/a','Missed survey download', True, False, True)
     driver.find_element_by_xpath('//*[@id="download-wait-modal"]/div[2]/div/div[2]/div/span[1]/p[1]/a').click()
+    os.chdir(download_file_path)
+    while next(glob.iglob('*.crdownload'), False) is not False:
+        time.sleep(1)
+    print('survey data done downloading')
     download_count += 1
-    #time.sleep(60)
     driver.close()
-
 
 # Downloads event information
 def download_event_data(url, driver):
     global download_count
     time.sleep(1)
     driver.get(url)
-    #wait_for_ajax(driver)
     time.sleep(5)
-    #find_element(driver, 'xpath', '//*[@id="search-form"]/div/div[2]/div/div[1]/div/a',"Could not find the download button", False, True, True)
     driver.find_element_by_xpath('//*[@id="search-form"]/div/div[2]/div/div[1]/div/a').click()
     while 'Your download is ready' not in driver.page_source:
         time.sleep(1)
-    #find_element(driver, 'xpath', '//*[@id="download-wait-modal"]/div[2]/div/div[2]/div/span[1]/p[1]/a','Missed event download', True, False, True)
     driver.find_element_by_xpath('//*[@id="download-wait-modal"]/div[2]/div/div[2]/div/span[1]/p[1]/a').click()
+    os.chdir(download_file_path)
+    while next(glob.iglob('*.crdownload'),False) is not False:
+        time.sleep(1)
+    print('event data done downloading')
     download_count += 1
-    time.sleep(60)
     driver.close()
 
 
@@ -204,22 +204,6 @@ def login(driver):
     while 'Student Activity Snapshot' not in driver.page_source:
         time.sleep(1)
     return
-
-
-# wait for ajax to finish
-"""def wait_for_ajax(driver):
-    done = False
-    while not done:
-        try:
-            if driver.execute_script('return jQuery.active') == 0 and driver.execute_script(
-                    'return document.readyState') != 'complete':
-                done = True
-            print('waiting for ajax')
-            time.sleep(.5)
-            done = True
-        except WebDriverException:
-            print('WebDriverException')
-    time.sleep(4)"""
 
 
 # Called by find_element() and used to wait until a specific element is loaded.
@@ -380,15 +364,9 @@ def find_element(driver, type, name, message, increase_error, recurse, click):
 # Rename all of the files in the folder.
 def rename_files():
     # wait for downloads.
-    done_downloading = False
-    while not done_downloading:
-        check = glob.glob('*.crdownload')
-        if len(check) <= 1:
-            done_downloading = True
-        else:
-            print('Waiting for downloads to finish')
-            time.sleep(1)
-    time.sleep(30)
+    os.chdir(download_file_path)
+    while next(glob.iglob('*.crdownload'), False) is not False:
+        time.sleep(5)
 
     os.chdir(download_file_path)
     files = glob.glob('generated*.csv')
@@ -428,7 +406,7 @@ def main():
     rename_files()
     print(str(download_count) + " of " + str(len(csv)) + " files downloaded" + "\nFiles saved to " + str(
         download_file_path))
-
+    driver.close()
 
 # define and initialize global variables
 driver = webdriver.Chrome()
