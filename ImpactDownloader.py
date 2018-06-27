@@ -59,7 +59,6 @@ def load_config():
 def load_csv():
     with open(input_file_path, mode='r') as infile:
         urls = {rows[0]: rows[1] for rows in itertools.islice(csv.reader(infile), 1, number_of_rows)}
-        print("urls: " + str(urls))
         return urls
 
 
@@ -395,6 +394,7 @@ def wait_for_downloads():
 # Copies files into folder with names the same as the name of the file without datetime. These folders are in a
 # network location specifed by the user.
 def copy_to_network_drive():
+    coppied =0
     try:
         print("Starting copy to network location:" + str(network_location))
         os.chdir(download_file_path)
@@ -406,9 +406,10 @@ def copy_to_network_drive():
             full_path = network_location + '\\' + file[:-24]
             print("full path: " + full_path)
             shutil.move(file, full_path)
+            coppied +=1
     except:
         print("Could not copy files to network location")
-
+    print(str(coppied) +" files coppied to "+str(network_location))
 
 # Initialize variables and being download.
 def main():
@@ -430,7 +431,7 @@ def main():
     if network_location != "":
         copy_to_network_drive()
     print(str(download_count) + " of " + str(len(csv)) + " files downloaded" + "\nFiles saved to " + str(
-        download_file_path) +"and moved to "+str(network_location))
+        download_file_path) +" and moved to "+str(network_location))
     driver.close()
 
 
