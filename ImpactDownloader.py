@@ -5,6 +5,7 @@ import fnmatch
 import glob
 import itertools
 import os
+import shutil
 import threading
 import time
 import tkinter
@@ -32,19 +33,20 @@ def load_config():
     if not my_file.is_file():
         file = open("ImpactDownloader.config", "w+")
         file.write(
-            "[DEFAULT]\nUSERNAME = \nPASSWORD = \nINPUT_CSV_FILE_PATH = \nNUMBER_OF_ROWS = \nDOWNLOAD_LOCATION =")
+            "[DEFAULT]\nUSERNAME = \nPASSWORD = \nINPUT_CSV_FILE_PATH = \nNUMBER_OF_ROWS = \nDOWNLOAD_LOCATION = \nNETWORK_LOCATION = ")
         messagebox.showinfo("Warning", "Config file created. Please add a CSV file path and relaunch the program.")
         driver.close()
         sys.exit()
 
     # Read config and set variables
     config.read('ImpactDownloader.config')
-    global username, password, input_file_path, number_of_rows, download_file_path
+    global username, password, input_file_path, number_of_rows, download_file_path, network_location
     username = config['DEFAULT']['USERNAME']
     password = config['DEFAULT']['PASSWORD']
     input_file_path = config['DEFAULT']['INPUT_CSV_FILE_PATH']
     number_of_rows = int(config['DEFAULT']['NUMBER_OF_ROWS'])
     download_file_path = config['DEFAULT']['DOWNLOAD_LOCATION']
+    network_location = config['DEFAULT']['NETWORK_LOCATION']
 
     # End if there is no CSV path
     if input_file_path is "":
@@ -57,11 +59,12 @@ def load_config():
 def load_csv():
     with open(input_file_path, mode='r') as infile:
         urls = {rows[0]: rows[1] for rows in itertools.islice(csv.reader(infile), 1, number_of_rows)}
+        print("urls: " + str(urls))
         return urls
 
 
 # Downloads csv file for insights pages
-def download_insight_data(url):
+def download_insight_data(url, folder):
     global error_count, download_count
     driver.get(url)
     # look at insights frame
@@ -113,6 +116,17 @@ def download_insight_data(url):
                  "Still couldn't find 'all results' radio button", True, False, True)
     print("Found 'all results' radio button.")
     time.sleep(1)
+
+    try:
+        # Change filename
+        wait_for_page('xpath', '//*[@id="qr-export-modal-custom-filename"]')
+        filename = folder + datetime.now().strftime("_%Y-%m-%d_%H.%M.%S") + ".csv"
+        driver.find_element_by_xpath('//*[@id="qr-export-modal-custom-filename"]').clear()
+        driver.find_element_by_xpath('//*[@id="qr-export-modal-custom-filename"]').send_keys(filename)
+    except:
+        print("Could not rename file before downloading.")
+        error_count += 1
+
     try:
         driver.find_element_by_id('qr-export-modal-download').click()
         download_count += 1
@@ -139,7 +153,11 @@ def download_survey_data(url, driver):
         time.sleep(1)
     print('survey data done downloading')
     download_count += 1
+    files = glob.glob('survey_response_download*.csv')
+    for file in files:
+        os.rename(file, "appt_survey" + datetime.now().strftime("_%Y-%m-%d_%H.%M.%S") + ".csv")
     driver.close()
+
 
 # Downloads event information
 def download_event_data(url, driver):
@@ -152,10 +170,13 @@ def download_event_data(url, driver):
         time.sleep(1)
     driver.find_element_by_xpath('//*[@id="download-wait-modal"]/div[2]/div/div[2]/div/span[1]/p[1]/a').click()
     os.chdir(download_file_path)
-    while next(glob.iglob('*.crdownload'),False) is not False:
+    while next(glob.iglob('*.crdownload'), False) is not False:
         time.sleep(1)
     print('event data done downloading')
     download_count += 1
+    files = glob.glob('event_download*.csv')
+    for file in files:
+        os.rename(file, "event_detail" + datetime.now().strftime("_%Y-%m-%d_%H.%M.%S") + ".csv")
     driver.close()
 
 
@@ -165,7 +186,8 @@ def download_all(my_dict):
     for i in tqdm(my_dict):
 
         if 'insights_page' in my_dict.get(i):
-            download_insight_data(my_dict[i])
+            my_dict_reverse = {v: k for k, v in my_dict.items()}
+            download_insight_data(my_dict[i], my_dict_reverse[my_dict[i]])
         elif 'surveys' in my_dict.get(i):
             if download_file_path is not "":
                 driver2 = change_download_location(download_file_path)
@@ -209,33 +231,33 @@ def login(driver):
 # Called by find_element() and used to wait until a specific element is loaded.
 def wait_for_page(type, name):
     if type.lower() == 'name':
-        #print("Presence of element: " + str(driver.find_element_by_name(name).is_displayed()))
+        # print("Presence of element: " + str(driver.find_element_by_name(name).is_displayed()))
         # WebDriverWait().until(driver, driver.find_element_by_name(name).is_displayed())
         WebDriverWait(driver, 300).until(EC.visibility_of_element_located((By.NAME, name)))
-        return # print('wait_for_page success')
+        return  # print('wait_for_page success')
 
     elif type.lower() == 'xpath':
-        #print("Presence of element: " + str(driver.find_element_by_xpath(name).is_displayed()))
+        # print("Presence of element: " + str(driver.find_element_by_xpath(name).is_displayed()))
         # WebDriverWait().until(driver, driver.find_element_by_xpath(name).is_displayed())
         WebDriverWait(driver, 300).until(EC.visibility_of_element_located((By.XPATH, name)))
-        return # print('wait_for_page success')
+        return  # print('wait_for_page success')
 
     elif type.lower() == 'tag_name':
-        #print("Presence of element: " + str(driver.find_element_by_tag_name(name).is_displayed()))
+        # print("Presence of element: " + str(driver.find_element_by_tag_name(name).is_displayed()))
         # WebDriverWait().until(driver, driver.find_element_by_tag_name(name).is_displayed())
         WebDriverWait(driver, 300).until(EC.visibility_of_element_located((By.TAG_NAME, name)))
-        return # print('wait_for_page success')
+        return  # print('wait_for_page success')
 
     elif type.lower() == 'id':
-        #print("Presence of element: " + str(driver.find_element_by_id(name).is_displayed()))
+        # print("Presence of element: " + str(driver.find_element_by_id(name).is_displayed()))
         # WebDriverWait().until(driver, driver.find_element_by_id(name).is_displayed())
         WebDriverWait(driver, 300).until(EC.presence_of_element_located((By.ID, name)))
-        return # print('wait_for_page success')
+        return  # print('wait_for_page success')
     elif type.lower() == 'class_name':
-        #print("Presence of element: " + str(driver.find_element_by_class_name(name).is_displayed()))
+        # print("Presence of element: " + str(driver.find_element_by_class_name(name).is_displayed()))
         # WebDriverWait().until(driver, driver.find_element_by_id(name).is_displayed())
         WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.class_name, name)))
-        return # print('wait_for_page success')
+        return  # print('wait_for_page success')
     else:
         return -'1'
 
@@ -361,30 +383,31 @@ def find_element(driver, type, name, message, increase_error, recurse, click):
         return '-1'
 
 
-# Rename all of the files in the folder.
-def rename_files():
+# Wait for downloads to finish.
+def wait_for_downloads():
     # wait for downloads.
     os.chdir(download_file_path)
+    print("Waiting for downloads to finish")
     while next(glob.iglob('*.crdownload'), False) is not False:
         time.sleep(5)
 
-    os.chdir(download_file_path)
-    files = glob.glob('generated*.csv')
-    print('Renaming Files')
-    for file in files:
-        filename = os.path.basename(file)[31:-19] + datetime.now().strftime("%Y-%m-%d_%H.%M.%S") + ".csv"
-        os.rename(file, filename)
-        time.sleep(1)
-    files = glob.glob('event_download*.csv')
-    for file in files:
-        filename = os.path.basename(file)[:5] + "_results" + datetime.now().strftime("%Y-%m-%d_%H.%M.%S") + ".csv"
-        os.rename(file, filename)
-        time.sleep(1)
-    files = glob.glob('survey_response*.csv')
-    for file in files:
-        filename = os.path.basename(file)[:16] + datetime.now().strftime("%Y-%m-%d_%H.%M.%S") + ".csv"
-        os.rename(file, filename)
-        time.sleep(1)
+
+# Copies files into folder with names the same as the name of the file without datetime. These folders are in a
+# network location specifed by the user.
+def copy_to_network_drive():
+    try:
+        print("Starting copy to network location:" + str(network_location))
+        os.chdir(download_file_path)
+        files = glob.glob("*.csv")
+    except:
+        print("Could not get files to move to network location.")
+    try:
+        for file in files:
+            full_path = network_location + '\\' + file[:-24]
+            print("full path: " + full_path)
+            shutil.move(file, full_path)
+    except:
+        print("Could not copy files to network location")
 
 
 # Initialize variables and being download.
@@ -403,10 +426,13 @@ def main():
     if len(missed_urls) > 0:
         download_all(missed_urls)
     time.sleep(60)
-    rename_files()
+    wait_for_downloads()
+    if network_location != "":
+        copy_to_network_drive()
     print(str(download_count) + " of " + str(len(csv)) + " files downloaded" + "\nFiles saved to " + str(
-        download_file_path))
+        download_file_path) +"and moved to "+str(network_location))
     driver.close()
+
 
 # define and initialize global variables
 driver = webdriver.Chrome()
@@ -415,6 +441,7 @@ print('error count: ' + str(error_count))
 download_count = 0
 input_file_path = ""
 download_file_path = ""
+network_location = ""
 number_of_rows = 0
 missed_urls = {}
 main()
