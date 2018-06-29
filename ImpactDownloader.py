@@ -387,14 +387,18 @@ def wait_for_downloads():
     # wait for downloads.
     os.chdir(download_file_path)
     print("Waiting for downloads to finish")
+    wait_count = 0
     while next(glob.iglob('*.crdownload'), False) is not False:
-        time.sleep(5)
+        time.sleep(6)
+        wait_count +=1
+        if wait_count > 100:
+            return
 
 
 # Copies files into folder with names the same as the name of the file without datetime. These folders are in a
-# network location specifed by the user.
+# network location specified by the user.
 def copy_to_network_drive():
-    coppied =0
+    copied = 0
     try:
         print("Starting copy to network location:" + str(network_location))
         os.chdir(download_file_path)
@@ -403,13 +407,19 @@ def copy_to_network_drive():
         print("Could not get files to move to network location.")
     try:
         for file in files:
-            full_path = network_location + '\\' + file[:-24]
-            print("full path: " + full_path)
-            shutil.move(file, full_path)
-            coppied +=1
+            full_path = os.path.join(network_location, file[:-24])
+            shutil.copy2(file, full_path)
+            print("Copied: " + full_path)
+            copied += 1
     except:
         print("Could not copy files to network location")
-    print(str(coppied) +" files coppied to "+str(network_location))
+    print(str(copied) + " files coppied to " + str(network_location))
+
+def delete_csv_from_download():
+    fileList = os.listdir(download_file_path)
+    for fileName in fileList:
+        os.remove(download_file_path + "/" + fileName)
+    print("CSV files deleted from download directory")
 
 # Initialize variables and being download.
 def main():
@@ -426,12 +436,11 @@ def main():
     download_all(csv)
     if len(missed_urls) > 0:
         download_all(missed_urls)
-    time.sleep(60)
     wait_for_downloads()
     if network_location != "":
         copy_to_network_drive()
-    print(str(download_count) + " of " + str(len(csv)) + " files downloaded" + "\nFiles saved to " + str(
-        download_file_path) +" and moved to "+str(network_location))
+    print(str(download_count) + " of " + str(number_of_rows-1) + " files downloaded" + "\nFiles saved to " + str(download_file_path) + " and moved to " + str(network_location))
+    delete_csv_from_download()
     driver.close()
 
 
