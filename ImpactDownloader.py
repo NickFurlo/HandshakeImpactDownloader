@@ -388,11 +388,11 @@ def wait_for_downloads():
     os.chdir(download_file_path)
     print("Waiting for downloads to finish")
     wait_count = 0
-    while next(glob.iglob('*.crdownload'), False) is not False:
+    while os.path.isfile('*.crdownload'):
         time.sleep(6)
         wait_count +=1
-        if wait_count > 100:
-            return
+        if wait_count > 3:
+            break
 
 
 # Copies files into folder with names the same as the name of the file without datetime. These folders are in a
@@ -411,8 +411,9 @@ def copy_to_network_drive():
             shutil.copy2(file, full_path)
             print("Copied: " + full_path)
             copied += 1
-    except:
+    except Exception as e:
         print("Could not copy files to network location")
+        print( "Error code: "+str(e))
     print(str(copied) + " files coppied to " + str(network_location))
 
 def delete_csv_from_download():
