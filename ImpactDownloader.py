@@ -320,7 +320,7 @@ def find_element(driver, type, name, message, increase_error, recurse, click):
                 find_element(driver, type, name, message, increase_error, recurse, click)
             if increase_error:
                 error_count += 1
-            return '-1'
+            return find_element(driver, type, name, message, increase_error, recurse, click)
     elif type.lower() == 'name':
         try:
             wait_for_page('name', name)
@@ -333,7 +333,7 @@ def find_element(driver, type, name, message, increase_error, recurse, click):
                 find_element(driver, type, name, message, increase_error, recurse, click)
             if increase_error:
                 error_count += 1
-            return '-1'
+            return find_element(driver, type, name, message, increase_error, recurse, click)
 
     elif type.lower() == 'xpath':
         try:
@@ -349,7 +349,7 @@ def find_element(driver, type, name, message, increase_error, recurse, click):
                 find_element(driver, type, name, message, increase_error, recurse, click)
             if increase_error:
                 error_count += 1
-            return '-1'
+            return find_element(driver, type, name, message, increase_error, recurse, click)
     elif type.lower() == 'id':
         try:
             wait_for_page('id', name)
@@ -363,7 +363,7 @@ def find_element(driver, type, name, message, increase_error, recurse, click):
                 find_element(driver, type, name, message, increase_error, recurse, click)
             if increase_error:
                 error_count += 1
-            return '-1'
+            return find_element(driver, type, name, message, increase_error, recurse, click)
     elif type.lower() == 'class_name':
         try:
             wait_for_page('id', name)
@@ -377,7 +377,7 @@ def find_element(driver, type, name, message, increase_error, recurse, click):
                 find_element(driver, type, name, message, increase_error, recurse, click)
             if increase_error:
                 error_count += 1
-            return '-1'
+            return find_element(driver, type, name, message, increase_error, recurse, click)
     else:
         return '-1'
 
@@ -388,11 +388,14 @@ def wait_for_downloads():
     os.chdir(download_file_path)
     print("Waiting for downloads to finish")
     wait_count = 0
-    while os.path.isfile('*.crdownload'):
+    while len(glob.glob('*.crdownload')) >0:
+        print("Waiting for downloads to finish...")
         time.sleep(6)
-        wait_count +=1
-        if wait_count > 3:
+        wait_count += 1
+        if wait_count > 1000:
+            time.sleep(5)
             break
+    time.sleep(5)
 
 
 # Copies files into folder with names the same as the name of the file without datetime. These folders are in a
@@ -408,19 +411,25 @@ def copy_to_network_drive():
     try:
         for file in files:
             full_path = os.path.join(network_location, file[:-24])
+            full_path = full_path.replace("\\", "/")
             shutil.copy2(file, full_path)
             print("Copied: " + full_path)
             copied += 1
     except Exception as e:
         print("Could not copy files to network location")
-        print( "Error code: "+str(e))
+        print("Error code: " + str(e))
     print(str(copied) + " files coppied to " + str(network_location))
+
 
 def delete_csv_from_download():
     fileList = os.listdir(download_file_path)
     for fileName in fileList:
-        os.remove(download_file_path + "/" + fileName)
+        try:
+            os.remove(download_file_path + "/" + fileName)
+        except Exception as e:
+            print("Could not delete " + str(fileName) + " because: " + str(e))
     print("CSV files deleted from download directory")
+
 
 # Initialize variables and being download.
 def main():
@@ -440,7 +449,8 @@ def main():
     wait_for_downloads()
     if network_location != "":
         copy_to_network_drive()
-    print(str(download_count) + " of " + str(number_of_rows-1) + " files downloaded" + "\nFiles saved to " + str(download_file_path) + " and moved to " + str(network_location))
+    print(str(download_count) + " of " + str(number_of_rows - 1) + " files downloaded" + "\nFiles saved to " + str(
+        download_file_path) + " and moved to " + str(network_location))
     delete_csv_from_download()
     driver.close()
 
