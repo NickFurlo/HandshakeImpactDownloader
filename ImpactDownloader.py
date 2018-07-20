@@ -76,6 +76,7 @@ def download_insight_data(url, folder):
     time.sleep(2)
 
     # send shortcut to open download dialog
+    wait_for_page('tag_name', 'body')
     body = find_element(driver, 'tag_name', 'body', 'error at body click', True, False, False)
     body.click()
     try:
@@ -90,6 +91,7 @@ def download_insight_data(url, folder):
         #    '//*[@id="lk-layout-embed"]/div[4]/div/div/form/div[2]/div[4]/div/div[2]/label').click()
 
         # New method of waiting for page
+        wait_for_page('name', 'qr-export-modal-limit')
         wait_for_page('name', 'qr-export-modal-limit')
         find_element(driver, 'xpath', '//*[@id="lk-layout-embed"]/div[4]/div/div/form/div[2]/div[4]/div/div[2]/label',
                      "Couldn't find 'all results' radio button", True, False, True)
@@ -458,7 +460,6 @@ def main():
 # define and initialize global variables
 driver = webdriver.Chrome()
 error_count = 0
-print('error count: ' + str(error_count))
 download_count = 0
 input_file_path = ""
 download_file_path = ""
