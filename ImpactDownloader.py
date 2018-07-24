@@ -10,6 +10,7 @@ import threading
 import time
 import tkinter
 from datetime import datetime
+from distutils.util import strtobool
 from os import listdir
 from os.path import isfile, join
 from pathlib import Path
@@ -33,20 +34,22 @@ def load_config():
     if not my_file.is_file():
         file = open("ImpactDownloader.config", "w+")
         file.write(
-            "[DEFAULT]\nUSERNAME = \nPASSWORD = \nINPUT_CSV_FILE_PATH = \nNUMBER_OF_ROWS = \nDOWNLOAD_LOCATION = \nNETWORK_LOCATION = ")
+            "[DEFAULT]\nUSERNAME = \nPASSWORD = \nINPUT_CSV_FILE_PATH = \nNUMBER_OF_ROWS = \nDOWNLOAD_LOCATION = \nNETWORK_LOCATION =  \nLOG_TO_FILE = ")
         messagebox.showinfo("Warning", "Config file created. Please add a CSV file path and relaunch the program.")
         driver.close()
         sys.exit()
 
     # Read config and set variables
     config.read('ImpactDownloader.config')
-    global username, password, input_file_path, number_of_rows, download_file_path, network_location
+    global username, password, input_file_path, number_of_rows, download_file_path, network_location, log_enabled
     username = config['DEFAULT']['USERNAME']
     password = config['DEFAULT']['PASSWORD']
     input_file_path = config['DEFAULT']['INPUT_CSV_FILE_PATH']
     number_of_rows = int(config['DEFAULT']['NUMBER_OF_ROWS'])
     download_file_path = config['DEFAULT']['DOWNLOAD_LOCATION']
     network_location = config['DEFAULT']['NETWORK_LOCATION']
+    log_enabled = config['DEFAULT']['LOG_TO_FILE']
+
 
     # End if there is no CSV path
     if input_file_path is "":
@@ -91,7 +94,6 @@ def download_insight_data(url, folder):
         #    '//*[@id="lk-layout-embed"]/div[4]/div/div/form/div[2]/div[4]/div/div[2]/label').click()
 
         # New method of waiting for page
-        wait_for_page('name', 'qr-export-modal-limit')
         wait_for_page('name', 'qr-export-modal-limit')
         find_element(driver, 'xpath', '//*[@id="lk-layout-embed"]/div[4]/div/div/form/div[2]/div[4]/div/div[2]/label',
                      "Couldn't find 'all results' radio button", True, False, True)
@@ -432,14 +434,23 @@ def delete_csv_from_download():
             print("Could not delete " + str(fileName) + " because: " + str(e))
     print("CSV files deleted from download directory")
 
+def log_to_file():
+    path = str(os.getcwd() + '/Logs').replace('\\', '/')
+    if not os.path.exists(path):
+        os.mkdir(path)
+
+    full_path = path + "/" + "ImpactDownloaderLog" + datetime.now().strftime("_%Y-%m-%d_%H.%M") + ".txt"
+    sys.stdout = open(full_path, "w")
 
 # Initialize variables and being download.
 def main():
-    global driver, input_file_path, number_of_rows, download_count, missed_urls
+    global driver, input_file_path, number_of_rows, download_count, missed_urls, log_to_file
     download_count = 0
     input_file_path = ""
     number_of_rows = 0
     load_config()
+    if bool(strtobool(str(log_enabled))):
+        log_to_file()
     if download_file_path is not "":
         driver.close()
         driver = change_download_location(download_file_path)
@@ -465,5 +476,6 @@ input_file_path = ""
 download_file_path = ""
 network_location = ""
 number_of_rows = 0
+log_enabled = ""
 missed_urls = {}
 main()
