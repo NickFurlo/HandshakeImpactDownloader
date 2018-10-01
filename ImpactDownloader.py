@@ -486,6 +486,7 @@ def delete_old_network_files(cutoff):
 
 # Initialize variables and being download.
 def main():
+    delete_csv_from_download()
     global driver, input_file_path, number_of_rows, download_count, missed_urls, log_to_file
     download_count = 0
     input_file_path = ""
