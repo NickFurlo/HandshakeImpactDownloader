@@ -34,14 +34,14 @@ def load_config():
     if not my_file.is_file():
         file = open("ImpactDownloader.config", "w+")
         file.write(
-            "[DEFAULT]\nUSERNAME = \nPASSWORD = \nINPUT_CSV_FILE_PATH = \nNUMBER_OF_ROWS = \nDOWNLOAD_LOCATION = \nNETWORK_LOCATION =  \nLOG_TO_FILE = ")
+            "[DEFAULT]\nUSERNAME = \nPASSWORD = \nINPUT_CSV_FILE_PATH = \nNUMBER_OF_ROWS = \nDOWNLOAD_LOCATION = \nNETWORK_LOCATION =  \nLOG_TO_FILE = \nDELETE_AFTER_DAYS = ")
         messagebox.showinfo("Warning", "Config file created. Please add a CSV file path and relaunch the program.")
         driver.close()
         sys.exit()
 
     # Read config and set variables
     config.read('ImpactDownloader.config')
-    global username, password, input_file_path, number_of_rows, download_file_path, network_location, log_enabled
+    global username, password, input_file_path, number_of_rows, download_file_path, network_location, log_enabled, days_until_delete
     username = config['DEFAULT']['USERNAME']
     password = config['DEFAULT']['PASSWORD']
     input_file_path = config['DEFAULT']['INPUT_CSV_FILE_PATH']
@@ -49,7 +49,7 @@ def load_config():
     download_file_path = config['DEFAULT']['DOWNLOAD_LOCATION']
     network_location = config['DEFAULT']['NETWORK_LOCATION']
     log_enabled = config['DEFAULT']['LOG_TO_FILE']
-
+    days_until_delete = config['DEFAULT']['DELETE_AFTER_DAYS']
 
     # End if there is no CSV path
     if input_file_path is "":
@@ -83,7 +83,12 @@ def download_insight_data(url, folder):
     body = find_element(driver, 'tag_name', 'body', 'error at body click', True, False, False)
     body.click()
     try:
-        body.send_keys(Keys.CONTROL + Keys.SHIFT + 'l')
+        while("With visualization options applied " not in driver.page_source):
+            time.sleep(2)
+            body.click()
+            body.send_keys(Keys.CONTROL + Keys.SHIFT + 'l')
+            print("Attempting Shortcut")
+        print("Sent shortcut")
     except:
         error_count += 1
         print("error at shortcut")
@@ -123,7 +128,7 @@ def download_insight_data(url, folder):
     try:
         # Change filename
         wait_for_page('xpath', '//*[@id="qr-export-modal-custom-filename"]')
-        filename = folder + datetime.now().strftime("_%Y-%m-%d_%H.%M.%S") + ".csv"
+        filename = folder + datetime.now().strftime("_%Y-%m-%d") + ".csv"
         driver.find_element_by_xpath('//*[@id="qr-export-modal-custom-filename"]').clear()
         driver.find_element_by_xpath('//*[@id="qr-export-modal-custom-filename"]').send_keys(filename)
     except:
@@ -158,7 +163,7 @@ def download_survey_data(url, driver):
     download_count += 1
     files = glob.glob('survey_response_download*.csv')
     for file in files:
-        os.rename(file, "appt_survey" + datetime.now().strftime("_%Y-%m-%d_%H.%M.%S") + ".csv")
+        os.rename(file, "appt_survey" + datetime.now().strftime("_%Y-%m-%d") + ".csv")
     driver.close()
 
 
@@ -179,7 +184,7 @@ def download_event_data(url, driver):
     download_count += 1
     files = glob.glob('event_download*.csv')
     for file in files:
-        os.rename(file, "event_detail" + datetime.now().strftime("_%Y-%m-%d_%H.%M.%S") + ".csv")
+        os.rename(file, "event_detail" + datetime.now().strftime("_%Y-%m-%d") + ".csv")
     driver.close()
 
 
@@ -236,30 +241,30 @@ def wait_for_page(type, name):
     if type.lower() == 'name':
         # print("Presence of element: " + str(driver.find_element_by_name(name).is_displayed()))
         # WebDriverWait().until(driver, driver.find_element_by_name(name).is_displayed())
-        WebDriverWait(driver, 300).until(EC.visibility_of_element_located((By.NAME, name)))
+        WebDriverWait(driver, 900).until(EC.visibility_of_element_located((By.NAME, name)))
         return  # print('wait_for_page success')
 
     elif type.lower() == 'xpath':
         # print("Presence of element: " + str(driver.find_element_by_xpath(name).is_displayed()))
         # WebDriverWait().until(driver, driver.find_element_by_xpath(name).is_displayed())
-        WebDriverWait(driver, 300).until(EC.visibility_of_element_located((By.XPATH, name)))
+        WebDriverWait(driver, 900).until(EC.visibility_of_element_located((By.XPATH, name)))
         return  # print('wait_for_page success')
 
     elif type.lower() == 'tag_name':
         # print("Presence of element: " + str(driver.find_element_by_tag_name(name).is_displayed()))
         # WebDriverWait().until(driver, driver.find_element_by_tag_name(name).is_displayed())
-        WebDriverWait(driver, 300).until(EC.visibility_of_element_located((By.TAG_NAME, name)))
+        WebDriverWait(driver, 900).until(EC.visibility_of_element_located((By.TAG_NAME, name)))
         return  # print('wait_for_page success')
 
     elif type.lower() == 'id':
         # print("Presence of element: " + str(driver.find_element_by_id(name).is_displayed()))
         # WebDriverWait().until(driver, driver.find_element_by_id(name).is_displayed())
-        WebDriverWait(driver, 300).until(EC.presence_of_element_located((By.ID, name)))
+        WebDriverWait(driver, 900).until(EC.presence_of_element_located((By.ID, name)))
         return  # print('wait_for_page success')
     elif type.lower() == 'class_name':
         # print("Presence of element: " + str(driver.find_element_by_class_name(name).is_displayed()))
         # WebDriverWait().until(driver, driver.find_element_by_id(name).is_displayed())
-        WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.class_name, name)))
+        WebDriverWait(driver, 900).until(EC.presence_of_element_located((By.class_name, name)))
         return  # print('wait_for_page success')
     else:
         return -'1'
@@ -392,7 +397,7 @@ def wait_for_downloads():
     os.chdir(download_file_path)
     print("Waiting for downloads to finish")
     wait_count = 0
-    while len(glob.glob('*.crdownload')) >0:
+    while len(glob.glob('*.crdownload')) > 0:
         print("Waiting for downloads to finish...")
         time.sleep(6)
         wait_count += 1
@@ -414,8 +419,9 @@ def copy_to_network_drive():
         print("Could not get files to move to network location.")
     try:
         for file in files:
-            full_path = os.path.join(network_location, file[:-24])
+            full_path = os.path.join(network_location, file[:-15])
             full_path = full_path.replace("\\", "/")
+            network_paths.append((full_path))
             shutil.copy2(file, full_path)
             print("Copied: " + full_path)
             copied += 1
@@ -434,6 +440,7 @@ def delete_csv_from_download():
             print("Could not delete " + str(fileName) + " because: " + str(e))
     print("CSV files deleted from download directory")
 
+
 def log_to_file():
     path = str(os.getcwd() + '/Logs').replace('\\', '/')
     if not os.path.exists(path):
@@ -441,6 +448,41 @@ def log_to_file():
 
     full_path = path + "/" + "ImpactDownloaderLog" + datetime.now().strftime("_%Y-%m-%d_%H.%M") + ".txt"
     sys.stdout = open(full_path, "w")
+
+
+# Deletes downloaded files from the network locations that are more than 7 days old.
+# Substrings file name, creates datetime from substring, compares datetime, deletes or not.
+def delete_old_network_files(cutoff):
+    now = time.time()
+    print("Checking for files older than " + str(cutoff) + " days.")
+
+    for path in network_paths:
+
+        files = os.listdir(path)
+        print(str(files))
+        for xfile in files:
+            full_pth = Path(os.path.join(path, xfile))
+            if full_pth.exists():
+                try:
+                    created = str(full_pth.name)[-14:-4]
+                    created_datetime = datetime.strptime(created, "%Y-%m-%d")
+                    print(str(xfile) + " created: " + str(created_datetime))
+                    today = datetime.now().strftime("%Y-%m-%d")
+                    today_datetime = datetime.strptime(today, "%Y-%m-%d")
+                    difference = today_datetime - created_datetime
+                    # delete file if older than a week
+                    if int(difference.total_seconds() / 86400) > cutoff:
+                        print(str(xfile) + " is older than " + str(cutoff) + " days. Deleting File...")
+                        os.remove(str(full_pth))
+                        print(str(xfile) + " was deleted.")
+                    else:
+                        print("File is not more than " + str(cutoff) + " days old, not deleted.")
+                except Exception as e:
+                    print(str(xfile) + " was not deleted.")
+                    print("error code: " + str(e))
+            else:
+                print("No old files found")
+
 
 # Initialize variables and being download.
 def main():
@@ -462,10 +504,14 @@ def main():
     wait_for_downloads()
     if network_location != "":
         copy_to_network_drive()
+    delete_csv_from_download()
+    if int(days_until_delete) > 0:
+        delete_old_network_files(int(days_until_delete))
+        print("Old Files Deleted")
+    driver.close()
     print(str(download_count) + " of " + str(number_of_rows - 1) + " files downloaded" + "\nFiles saved to " + str(
         download_file_path) + " and moved to " + str(network_location))
-    delete_csv_from_download()
-    driver.close()
+    print("\n\nImpact Downloader Finished")
 
 
 # define and initialize global variables
@@ -478,4 +524,7 @@ network_location = ""
 number_of_rows = 0
 log_enabled = ""
 missed_urls = {}
+global network_paths
+network_paths = []
+days_until_delete = 0
 main()
