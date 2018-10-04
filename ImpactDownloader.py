@@ -227,8 +227,7 @@ def download_all(my_dict):
 # fill login form with data from config file
 def login(driver):
     driver.get('https://oakland.joinhandshake.com/login')
-    driver.find_element_by_xpath('//*[@id="main"]/div[1]/div[2]/div[2]/a/div[2]').click()
-    # find_element(driver, 'xpath', '//*[@id="main"]/div[1]/div[2]/div[2]/a/div[2]', 'Missed body on first login page', False, True, True)
+    driver.find_element_by_xpath('//*[@id="sso-name"]').click()
     driver.find_element_by_id('username').send_keys(username, Keys.TAB)
     driver.find_element_by_id('password').send_keys(password, Keys.ENTER)
     while 'Student Activity Snapshot' not in driver.page_source:
@@ -239,33 +238,24 @@ def login(driver):
 # Called by find_element() and used to wait until a specific element is loaded.
 def wait_for_page(type, name):
     if type.lower() == 'name':
-        # print("Presence of element: " + str(driver.find_element_by_name(name).is_displayed()))
-        # WebDriverWait().until(driver, driver.find_element_by_name(name).is_displayed())
+
         WebDriverWait(driver, 900).until(EC.visibility_of_element_located((By.NAME, name)))
-        return  # print('wait_for_page success')
+        return
 
     elif type.lower() == 'xpath':
-        # print("Presence of element: " + str(driver.find_element_by_xpath(name).is_displayed()))
-        # WebDriverWait().until(driver, driver.find_element_by_xpath(name).is_displayed())
         WebDriverWait(driver, 900).until(EC.visibility_of_element_located((By.XPATH, name)))
-        return  # print('wait_for_page success')
+        return
 
     elif type.lower() == 'tag_name':
-        # print("Presence of element: " + str(driver.find_element_by_tag_name(name).is_displayed()))
-        # WebDriverWait().until(driver, driver.find_element_by_tag_name(name).is_displayed())
         WebDriverWait(driver, 900).until(EC.visibility_of_element_located((By.TAG_NAME, name)))
-        return  # print('wait_for_page success')
+        return
 
     elif type.lower() == 'id':
-        # print("Presence of element: " + str(driver.find_element_by_id(name).is_displayed()))
-        # WebDriverWait().until(driver, driver.find_element_by_id(name).is_displayed())
         WebDriverWait(driver, 900).until(EC.presence_of_element_located((By.ID, name)))
-        return  # print('wait_for_page success')
+        return
     elif type.lower() == 'class_name':
-        # print("Presence of element: " + str(driver.find_element_by_class_name(name).is_displayed()))
-        # WebDriverWait().until(driver, driver.find_element_by_id(name).is_displayed())
         WebDriverWait(driver, 900).until(EC.presence_of_element_located((By.class_name, name)))
-        return  # print('wait_for_page success')
+        return
     else:
         return -'1'
 
