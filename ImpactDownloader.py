@@ -422,14 +422,16 @@ def copy_to_network_drive():
 
 
 def delete_csv_from_download():
-    fileList = os.listdir(download_file_path)
-    for fileName in fileList:
-        try:
-            os.remove(download_file_path + "/" + fileName)
-        except Exception as e:
-            print("Could not delete " + str(fileName) + " because: " + str(e))
-    print("CSV files deleted from download directory")
-
+    try:
+        fileList = os.listdir(download_file_path)
+        for fileName in fileList:
+            try:
+                os.remove(download_file_path + "/" + fileName)
+            except Exception as e:
+                print("Could not delete " + str(fileName) + " because: " + str(e))
+        print("CSV files deleted from download directory")
+    except e:
+        print("Error Deleting Old Files: " + str(e))
 
 def log_to_file():
     path = str(os.getcwd() + '/Logs').replace('\\', '/')
