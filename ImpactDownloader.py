@@ -430,7 +430,7 @@ def delete_csv_from_download():
             except Exception as e:
                 print("Could not delete " + str(fileName) + " because: " + str(e))
         print("CSV files deleted from download directory")
-    except e:
+    except Exception as e:
         print("Error Deleting Old Files: " + str(e))
 
 def log_to_file():
@@ -486,6 +486,8 @@ def main():
     load_config()
     if bool(strtobool(str(log_enabled))):
         log_to_file()
+    if not os.path.exists(download_file_path):
+        os.mkdir(download_file_path)
     if download_file_path is not "":
         driver.close()
         driver = change_download_location(download_file_path)
