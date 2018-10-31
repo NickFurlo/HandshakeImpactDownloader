@@ -83,12 +83,10 @@ def download_insight_data(url, folder):
     body = find_element(driver, 'tag_name', 'body', 'error at body click', True, False, False)
     body.click()
     try:
-        while("With visualization options applied " not in driver.page_source):
+        while ("With visualization options applied " not in driver.page_source):
             time.sleep(2)
             body.click()
             body.send_keys(Keys.CONTROL + Keys.SHIFT + 'l')
-            print("Attempting Shortcut")
-        print("Sent shortcut")
     except:
         error_count += 1
         print("error at shortcut")
@@ -122,7 +120,6 @@ def download_insight_data(url, folder):
         print("couldn't enter custom rows for appointments ")
     find_element(driver, 'xpath', '//*[@id="lk-layout-embed"]/div[4]/div/div/form/div[2]/div[4]/div/div[2]/label',
                  "Still couldn't find 'all results' radio button", True, False, True)
-    print("Found 'all results' radio button.")
     time.sleep(1)
 
     try:
@@ -138,13 +135,11 @@ def download_insight_data(url, folder):
     try:
         driver.find_element_by_id('qr-export-modal-download').click()
         download_count += 1
+        wait_for_file(filename)
     except:
         missed_urls[''] = url
         print(str(url))
         print("download missed")
-
-    print('keys sent')
-    time.sleep(1)
 
 
 # Downloads survey results
@@ -260,6 +255,13 @@ def wait_for_page(type, name):
         return -'1'
 
 
+def wait_for_file(filename):
+    tmp = filename + ".crdownload"
+    while not os.path.isfile(filename) and os.path.isfile(tmp):
+        print("Waiting for file to download")
+    return
+
+
 # Create main menu gui
 def main_menu():
     def done():
@@ -336,7 +338,6 @@ def find_element(driver, type, name, message, increase_error, recurse, click):
 
     elif type.lower() == 'xpath':
         try:
-            print('looking for xpath')
             wait_for_page('xpath', name)
             if click:
                 return driver.find_element_by_xpath(name).click()
@@ -433,6 +434,7 @@ def delete_csv_from_download():
     except Exception as e:
         print("Error Deleting Old Files: " + str(e))
 
+
 def log_to_file():
     path = str(os.getcwd() + '/Logs').replace('\\', '/')
     if not os.path.exists(path):
@@ -449,41 +451,46 @@ def delete_old_network_files(cutoff):
     print("Checking for files older than " + str(cutoff) + " days.")
 
     for path in network_paths:
-
+        deleted = 0
         files = os.listdir(path)
-        print(str(files))
         for xfile in files:
             full_pth = Path(os.path.join(path, xfile))
             if full_pth.exists():
                 try:
                     created = str(full_pth.name)[-14:-4]
                     created_datetime = datetime.strptime(created, "%Y-%m-%d")
-                    print(str(xfile) + " created: " + str(created_datetime))
+                    # print(str(xfile) + " created: " + str(created_datetime))
                     today = datetime.now().strftime("%Y-%m-%d")
                     today_datetime = datetime.strptime(today, "%Y-%m-%d")
                     difference = today_datetime - created_datetime
-                    # delete file if older than a week
+                    # delete file if older than cutoff in days
                     if int(difference.total_seconds() / 86400) > cutoff:
-                        print(str(xfile) + " is older than " + str(cutoff) + " days. Deleting File...")
+                        # print(str(xfile) + " is older than " + str(cutoff) + " days. Deleting File...")
                         os.remove(str(full_pth))
-                        print(str(xfile) + " was deleted.")
-                    else:
-                        print("File is not more than " + str(cutoff) + " days old, not deleted.")
+                        deleted += 1
+                        # print(str(xfile) + " was deleted.")
+                    #else:
+                # print("File is not more than " + str(cutoff) + " days old, not deleted.")
                 except Exception as e:
-                    print(str(xfile) + " was not deleted.")
-                    print("error code: " + str(e))
+                    #print(str(xfile) + " was not deleted.")
+                    if "does not match format '%Y-%m-%d'" in str(e):
+                        os.remove(str(full_pth))
+                        deleted+=1
+                    else:
+                        print("Error Deleting File: "+str(e))
             else:
                 print("No old files found")
+    print(str(deleted) + " old files deleted ")
 
 
 # Initialize variables and being download.
 def main():
-    delete_csv_from_download()
     global driver, input_file_path, number_of_rows, download_count, missed_urls, log_to_file
     download_count = 0
     input_file_path = ""
     number_of_rows = 0
     load_config()
+    delete_csv_from_download()
     if bool(strtobool(str(log_enabled))):
         log_to_file()
     if not os.path.exists(download_file_path):
@@ -502,7 +509,6 @@ def main():
     delete_csv_from_download()
     if int(days_until_delete) > 0:
         delete_old_network_files(int(days_until_delete))
-        print("Old Files Deleted")
     driver.close()
     print(str(download_count) + " of " + str(number_of_rows - 1) + " files downloaded" + "\nFiles saved to " + str(
         download_file_path) + " and moved to " + str(network_location))
