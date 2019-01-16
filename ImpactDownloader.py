@@ -168,7 +168,7 @@ def download_event_data(url, driver):
     time.sleep(1)
     driver.get(url)
     time.sleep(5)
-    driver.find_element_by_xpath('//*[@id="search-form"]/div/div[2]/div/div[1]/div/a').click()
+    driver.find_element_by_xpath('//*[@id="search-form"]/div/div[2]/div/div[2]/div/a').click()
     while 'Your download is ready' not in driver.page_source:
         time.sleep(1)
     driver.find_element_by_xpath('//*[@id="download-wait-modal"]/div[2]/div/div[2]/div/span[1]/p[1]/a').click()
@@ -449,9 +449,9 @@ def log_to_file():
 def delete_old_network_files(cutoff):
     now = time.time()
     print("Checking for files older than " + str(cutoff) + " days.")
-
+    deleted = 0
     for path in network_paths:
-        deleted = 0
+
         files = os.listdir(path)
         for xfile in files:
             full_pth = Path(os.path.join(path, xfile))
@@ -468,16 +468,16 @@ def delete_old_network_files(cutoff):
                         # print(str(xfile) + " is older than " + str(cutoff) + " days. Deleting File...")
                         os.remove(str(full_pth))
                         deleted += 1
-                        # print(str(xfile) + " was deleted.")
-                    #else:
+                        print(str(xfile) + " was deleted.")
+                    # else:
                 # print("File is not more than " + str(cutoff) + " days old, not deleted.")
                 except Exception as e:
-                    #print(str(xfile) + " was not deleted.")
+                    # print(str(xfile) + " was not deleted.")
                     if "does not match format '%Y-%m-%d'" in str(e):
                         os.remove(str(full_pth))
-                        deleted+=1
+                        deleted += 1
                     else:
-                        print("Error Deleting File: "+str(e))
+                        print("Error Deleting File: " + str(e))
             else:
                 print("No old files found")
     print(str(deleted) + " old files deleted ")
