@@ -1,10 +1,11 @@
 Handshake Impact Downloader
-	This script will pull csv files from handshakes insight data, survey results, and event results in bulk. It imports
+	This script will download csv files from handshakes insight data, survey results, and event results in bulk. It imports
 	the links to the pages through a CSV file and then downloads the data from those links and puts them in a designated folder.
+	It can also transfer those files to another location such as a network drive. You can set it to delete files older than
+	a user specified amount of time.
 
 Getting Started
-	Run the exe to create the config file. Edit the config file to include the path of the download link CSV. Run the
-	exe again and the files will download automatically.
+	Run the script to create the config file. Edit the config file to include the path of the download link CSV. Run the script again and the files will download automatically.
 
 Config File
 	The config file will be created upon first run. The following fields will be available.
@@ -19,15 +20,15 @@ Config File
     DELETE_AFTER_DAYS: Integer value to check dates of old downloads against.
 
 Prerequisites
-	For Portable : Google Chrome
-	For Python: Google Chrome, Pythonn 3.6.5, Selenium (Python -m pip install selenium), tqdm (Python -m pip install
+	For Portable: Google Chrome
+	For Python: Google Chrome, Python 3.6.5, Selenium (Python -m pip install selenium), tqdm (Python -m pip install
 	tqdm)
 
 CSV Format
     Row one should consist of headers for the columns. Do not put data in this row.
-    Column one should contain the name of the data. This name is used for the folder and filenames.
+    Column one should contain the name of the data. This name is used for the folder and filenames. This will determine
+    the folder that your downloads will be transferred too inside of the NETWORK_LOCATION folder.
     Column two should have the links to insights, event, or survey data.
-
 
 Versioning
 	Version 1.5

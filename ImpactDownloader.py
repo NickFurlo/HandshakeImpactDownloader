@@ -1,7 +1,6 @@
 # Impact Downloader script by Nick Furlo 5/21/18
 import configparser
 import csv
-import fnmatch
 import glob
 import itertools
 import os
@@ -11,8 +10,6 @@ import time
 import tkinter
 from datetime import datetime
 from distutils.util import strtobool
-from os import listdir
-from os.path import isfile, join
 from pathlib import Path
 from tkinter import *
 from tkinter import messagebox
@@ -22,7 +19,6 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from tqdm import tqdm
 from selenium import webdriver
-from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.common.keys import Keys
 
 
@@ -34,7 +30,8 @@ def load_config():
     if not my_file.is_file():
         file = open("ImpactDownloader.config", "w+")
         file.write(
-            "[DEFAULT]\nUSERNAME = \nPASSWORD = \nINPUT_CSV_FILE_PATH = \nNUMBER_OF_ROWS = \nDOWNLOAD_LOCATION = \nNETWORK_LOCATION =  \nLOG_TO_FILE = \nDELETE_AFTER_DAYS = ")
+            "[DEFAULT]\nUSERNAME = \nPASSWORD = \nINPUT_CSV_FILE_PATH = \nNUMBER_OF_ROWS = \nDOWNLOAD_LOCATION = "
+            "\nNETWORK_LOCATION =  \nLOG_TO_FILE = \nDELETE_AFTER_DAYS = ")
         messagebox.showinfo("Warning", "Config file created. Please add a CSV file path and relaunch the program.")
         driver.close()
         sys.exit()
@@ -83,7 +80,7 @@ def download_insight_data(url, folder):
     body = find_element(driver, 'tag_name', 'body', 'error at body click', True, False, False)
     body.click()
     try:
-        while ("With visualization options applied " not in driver.page_source):
+        while "With visualization options applied " not in driver.page_source:
             time.sleep(2)
             body.click()
             body.send_keys(Keys.CONTROL + Keys.SHIFT + 'l')
@@ -92,18 +89,15 @@ def download_insight_data(url, folder):
         print("error at shortcut")
     time.sleep(1)
     try:
-        # Old method
-        # driver.find_element_by_xpath(
-        #    '//*[@id="lk-layout-embed"]/div[4]/div/div/form/div[2]/div[4]/div/div[2]/label').click()
 
-        # New method of waiting for page
+        # Wait for page
         wait_for_page('name', 'qr-export-modal-limit')
         find_element(driver, 'xpath', '//*[@id="lk-layout-embed"]/div[4]/div/div/form/div[2]/div[4]/div/div[2]/label',
                      "Couldn't find 'all results' radio button", True, False, True)
     except:
         print("Couldn't find 'all results' radio button. Will try again,")
 
-    # If Appointments insight, use custom row value
+    # If using an Appointments insight, use custom row value to download all rows
     try:
         if driver.find_element_by_xpath(
                 '//*[@id="lk-embed-container"]/lk-explore-dataflux/div[2]/lk-expandable-sidebar/ng-transclude/lk-field-picker/div[1]/div/div').text == "Appointments":
@@ -133,6 +127,7 @@ def download_insight_data(url, folder):
         error_count += 1
 
     try:
+        # Click download button
         driver.find_element_by_id('qr-export-modal-download').click()
         download_count += 1
         wait_for_file(filename)
@@ -147,11 +142,14 @@ def download_survey_data(url, driver):
     global download_count
     time.sleep(1)
     driver.get(url)
+    # click download
     driver.find_element_by_xpath('//*[@id="ui-id-2"]/div[2]/div[1]/div/a[4]').click()
+    # Wait for download to be ready
     while 'Your download is ready' not in driver.page_source:
         time.sleep(1)
     driver.find_element_by_xpath('//*[@id="download-wait-modal"]/div[2]/div/div[2]/div/span[1]/p[1]/a').click()
     os.chdir(download_file_path)
+    # Wait for file to finish downlaoding.
     while next(glob.iglob('*.crdownload'), False) is not False:
         time.sleep(1)
     print('survey data done downloading')
@@ -183,7 +181,7 @@ def download_event_data(url, driver):
     driver.close()
 
 
-# download_data for all URL's in dictionary. Uses multithreading to keep mulitple drivers alive and working at the
+# download_data for all URL's in dictionary. Uses multi-threading to keep multiple drivers alive and working at the
 # same time.
 def download_all(my_dict):
     for i in tqdm(my_dict):
@@ -231,30 +229,31 @@ def login(driver):
 
 
 # Called by find_element() and used to wait until a specific element is loaded.
-def wait_for_page(type, name):
-    if type.lower() == 'name':
+def wait_for_page(element_type, name):
+    if element_type.lower() == 'name':
 
         WebDriverWait(driver, 900).until(EC.visibility_of_element_located((By.NAME, name)))
         return
 
-    elif type.lower() == 'xpath':
+    elif element_type.lower() == 'xpath':
         WebDriverWait(driver, 900).until(EC.visibility_of_element_located((By.XPATH, name)))
         return
 
-    elif type.lower() == 'tag_name':
+    elif element_type.lower() == 'tag_name':
         WebDriverWait(driver, 900).until(EC.visibility_of_element_located((By.TAG_NAME, name)))
         return
 
-    elif type.lower() == 'id':
+    elif element_type.lower() == 'id':
         WebDriverWait(driver, 900).until(EC.presence_of_element_located((By.ID, name)))
         return
-    elif type.lower() == 'class_name':
+    elif element_type.lower() == 'class_name':
         WebDriverWait(driver, 900).until(EC.presence_of_element_located((By.class_name, name)))
         return
     else:
         return -'1'
 
 
+# Keep drivers open while waiting for downloads to finish.
 def wait_for_file(filename):
     tmp = filename + ".crdownload"
     while not os.path.isfile(filename) and os.path.isfile(tmp):
@@ -263,6 +262,7 @@ def wait_for_file(filename):
 
 
 # Create main menu gui
+# Currently unused
 def main_menu():
     def done():
         root.destroy()
@@ -306,7 +306,8 @@ def change_download_location(download_location):
 # Runs driver.find_element_by_TYPE(name) surrounded by error handling.
 # driver is driver to be used, type is the type of element, name is the
 # element location data, message is error to be printed to console,
-# increase error is boolean that decides to increment error counter
+# increase error is boolean that decides to increment error counter, click specifies whether or not the element should
+# be clicked
 def find_element(driver, type, name, message, increase_error, recurse, click):
     time.sleep(1)
     if type.lower() == 'tag_name':
@@ -382,7 +383,7 @@ def find_element(driver, type, name, message, increase_error, recurse, click):
         return '-1'
 
 
-# Wait for downloads to finish.
+# Wait for downloads to finish while keeping driver open.
 def wait_for_downloads():
     # wait for downloads.
     os.chdir(download_file_path)
@@ -412,7 +413,7 @@ def copy_to_network_drive():
         for file in files:
             full_path = os.path.join(network_location, file[:-15])
             full_path = full_path.replace("\\", "/")
-            network_paths.append((full_path))
+            network_paths.append(full_path)
             shutil.copy2(file, full_path)
             print("Copied: " + full_path)
             copied += 1
@@ -422,6 +423,7 @@ def copy_to_network_drive():
     print(str(copied) + " files coppied to " + str(network_location))
 
 
+# Deletes files from csv download path to make sure old downloads are gone.
 def delete_csv_from_download():
     try:
         fileList = os.listdir(download_file_path)
@@ -435,6 +437,7 @@ def delete_csv_from_download():
         print("Error Deleting Old Files: " + str(e))
 
 
+# Prints terminal log to a file.
 def log_to_file():
     path = str(os.getcwd() + '/Logs').replace('\\', '/')
     if not os.path.exists(path):
@@ -483,7 +486,7 @@ def delete_old_network_files(cutoff):
     print(str(deleted) + " old files deleted ")
 
 
-# Initialize variables and being download.
+# Initialize variables and begins downloads.
 def main():
     global driver, input_file_path, number_of_rows, download_count, missed_urls, log_to_file
     download_count = 0
