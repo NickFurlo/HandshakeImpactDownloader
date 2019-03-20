@@ -97,16 +97,19 @@ def download_insight_data(url, folder):
     except:
         print("Couldn't find 'all results' radio button. Will try again,")
 
-    # If using an Appointments insight, use custom row value to download all rows
+    # If using an Appointments insight, must use custom row value of 99999 to download all rows
     try:
         if driver.find_element_by_xpath(
                 '//*[@id="lk-embed-container"]/lk-explore-dataflux/div[2]/lk-expandable-sidebar/ng-transclude/lk-field-picker/div[1]/div/div').text == "Appointments":
+            # Click textbox
             driver.find_element_by_xpath(
                 '//*[@id="lk-layout-embed"]/div[4]/div/div/form/div[2]/div[4]/div/div[3]/label').click()
             time.sleep(1)
+            #Clear textbox
             driver.find_element_by_xpath(
                 '//*[@id="lk-layout-embed"]/div[4]/div/div/form/div[2]/div[4]/div/div[3]/div/div[1]/input').clear()
             time.sleep(1)
+            # Input row value of 99999
             driver.find_element_by_xpath(
                 '//*[@id="lk-layout-embed"]/div[4]/div/div/form/div[2]/div[4]/div/div[3]/div/div[1]/input').send_keys(
                 '99999')
@@ -117,10 +120,12 @@ def download_insight_data(url, folder):
     time.sleep(1)
 
     try:
-        # Change filename
+        # Change filename before downloading
         wait_for_page('xpath', '//*[@id="qr-export-modal-custom-filename"]')
         filename = folder + datetime.now().strftime("_%Y-%m-%d") + ".csv"
+        # Clear textbox
         driver.find_element_by_xpath('//*[@id="qr-export-modal-custom-filename"]').clear()
+        # Write filename to textbox
         driver.find_element_by_xpath('//*[@id="qr-export-modal-custom-filename"]').send_keys(filename)
     except:
         print("Could not rename file before downloading.")
@@ -142,11 +147,12 @@ def download_survey_data(url, driver):
     global download_count
     time.sleep(1)
     driver.get(url)
-    # click download
+    # click download button
     driver.find_element_by_xpath('//*[@id="ui-id-2"]/div[2]/div[1]/div/a[4]').click()
     # Wait for download to be ready
     while 'Your download is ready' not in driver.page_source:
         time.sleep(1)
+    # Click download link
     driver.find_element_by_xpath('//*[@id="download-wait-modal"]/div[2]/div/div[2]/div/span[1]/p[1]/a').click()
     os.chdir(download_file_path)
     # Wait for file to finish downlaoding.
@@ -154,6 +160,7 @@ def download_survey_data(url, driver):
         time.sleep(1)
     print('survey data done downloading')
     download_count += 1
+    # Rename survey file.
     files = glob.glob('survey_response_download*.csv')
     for file in files:
         os.rename(file, "appt_survey" + datetime.now().strftime("_%Y-%m-%d") + ".csv")
@@ -166,15 +173,19 @@ def download_event_data(url, driver):
     time.sleep(1)
     driver.get(url)
     time.sleep(5)
+    # Click download button
     driver.find_element_by_xpath('//*[@id="search-form"]/div/div[2]/div/div[2]/div/a').click()
+    # Wait for download to be ready
     while 'Your download is ready' not in driver.page_source:
         time.sleep(1)
+    # Click download link
     driver.find_element_by_xpath('//*[@id="download-wait-modal"]/div[2]/div/div[2]/div/span[1]/p[1]/a').click()
     os.chdir(download_file_path)
     while next(glob.iglob('*.crdownload'), False) is not False:
         time.sleep(1)
     print('event data done downloading')
     download_count += 1
+    # Rename event file
     files = glob.glob('event_download*.csv')
     for file in files:
         os.rename(file, "event_detail" + datetime.now().strftime("_%Y-%m-%d") + ".csv")
@@ -220,9 +231,13 @@ def download_all(my_dict):
 # fill login form with data from config file
 def login(driver):
     driver.get('https://oakland.joinhandshake.com/login')
+    # Click faculty/student login
     driver.find_element_by_xpath('//*[@id="sso-name"]').click()
+    # Send username to textbox
     driver.find_element_by_id('username').send_keys(username, Keys.TAB)
+    # Send password to textbox
     driver.find_element_by_id('password').send_keys(password, Keys.ENTER)
+    # Wait for handshake to login
     while 'Student Activity Snapshot' not in driver.page_source:
         time.sleep(1)
     return
@@ -231,18 +246,14 @@ def login(driver):
 # Called by find_element() and used to wait until a specific element is loaded.
 def wait_for_page(element_type, name):
     if element_type.lower() == 'name':
-
         WebDriverWait(driver, 900).until(EC.visibility_of_element_located((By.NAME, name)))
         return
-
     elif element_type.lower() == 'xpath':
         WebDriverWait(driver, 900).until(EC.visibility_of_element_located((By.XPATH, name)))
         return
-
     elif element_type.lower() == 'tag_name':
         WebDriverWait(driver, 900).until(EC.visibility_of_element_located((By.TAG_NAME, name)))
         return
-
     elif element_type.lower() == 'id':
         WebDriverWait(driver, 900).until(EC.presence_of_element_located((By.ID, name)))
         return
@@ -285,7 +296,7 @@ def main_menu():
     root.mainloop()
 
 
-# Outputs URLS for missed downloads to a file. Currently unused.
+# Outputs URLS for missed downloads to a file. Currently unused as missed downloads will automitcally attempted again
 def output_missed():
     if len(missed_urls) < 1:
         return
@@ -462,20 +473,15 @@ def delete_old_network_files(cutoff):
                 try:
                     created = str(full_pth.name)[-14:-4]
                     created_datetime = datetime.strptime(created, "%Y-%m-%d")
-                    # print(str(xfile) + " created: " + str(created_datetime))
                     today = datetime.now().strftime("%Y-%m-%d")
                     today_datetime = datetime.strptime(today, "%Y-%m-%d")
                     difference = today_datetime - created_datetime
                     # delete file if older than cutoff in days
                     if int(difference.total_seconds() / 86400) > cutoff:
-                        # print(str(xfile) + " is older than " + str(cutoff) + " days. Deleting File...")
                         os.remove(str(full_pth))
                         deleted += 1
                         print(str(xfile) + " was deleted.")
-                    # else:
-                # print("File is not more than " + str(cutoff) + " days old, not deleted.")
                 except Exception as e:
-                    # print(str(xfile) + " was not deleted.")
                     if "does not match format '%Y-%m-%d'" in str(e):
                         os.remove(str(full_pth))
                         deleted += 1
@@ -484,7 +490,6 @@ def delete_old_network_files(cutoff):
             else:
                 print("No old files found")
     print(str(deleted) + " old files deleted ")
-
 
 # Initialize variables and begins downloads.
 def main():
