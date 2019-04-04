@@ -67,13 +67,7 @@ def download_insight_data(url, folder):
     global error_count, download_count
     driver.get(url)
     # look at insights frame
-    driver.switch_to.frame(find_element(driver, 'tag_name', 'iframe', 'Could not find iframe', True, False, False))
-
-    # wait for insights page to load
-    while 'visualization' not in driver.page_source:
-        time.sleep(1)
-        print('waiting for page load...')
-    time.sleep(2)
+    driver.switch_to.frame(find_element(driver, 'xpath', '//*[@id="insights-iframe"]', 'Could not find iframe', True, False, False))
 
     # send shortcut to open download dialog
     wait_for_page('tag_name', 'body')
@@ -84,6 +78,7 @@ def download_insight_data(url, folder):
             time.sleep(2)
             body.click()
             body.send_keys(Keys.CONTROL + Keys.SHIFT + 'l')
+            print("Sent Shortcut")
     except:
         error_count += 1
         print("error at shortcut")
@@ -521,7 +516,6 @@ def main():
     print(str(download_count) + " of " + str(number_of_rows - 1) + " files downloaded" + "\nFiles saved to " + str(
         download_file_path) + " and moved to " + str(network_location))
     print("\n\nImpact Downloader Finished")
-
 
 # define and initialize global variables
 driver = webdriver.Chrome()
