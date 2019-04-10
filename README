@@ -10,18 +10,18 @@ Getting Started
 Config File
 	The config file will be created upon first run. The following fields will be available.
 
-    USE_WINDOWS_CREDENTIAL_MANAGER: True or False. Set to True in order to use Windows Credential Manager instead of
-    storing the password in the config file.
-    WCM_SERVICE_NAME: The service name for the windows credential manager entry. In the creditnal manager it is labeled
-    as "Internet or Network Address". Make sure they are stored under "Generic Credentials"
+    	USE_WINDOWS_CREDENTIAL_MANAGER: True or False. Set to True in order to use Windows Credential Manager instead of
+    	storing the password in the config file.
+    	WCM_SERVICE_NAME: The service name for the windows credential manager entry. In the creditnal manager it is labeled
+   	as "Internet or Network Address". Make sure they are stored under "Generic Credentials"
 	USERNAME: Username to be entered into handshake.
 	PASSWORD: Password to be entered into handshake. Leave black if using windows credential manager
 	INPUT_CSV_FILE_PATH: Filename or path to csv file containing links
 	NUMBER_OF_ROWS: The number of rows including the header.
 	DOWNLOAD_LOCATION: Path to download location for CSV's
 	NETWORK_LOCATION: Root directory for network location to be copied to.
-    LOG_TO_FILE: True or False to enable logging
-    DELETE_AFTER_DAYS: Integer value to check dates of old downloads against.
+    	LOG_TO_FILE: True or False to enable logging
+    	DELETE_AFTER_DAYS: Integer value to check dates of old downloads against.
 
 Prerequisites
 	For Portable: Google Chrome
@@ -29,10 +29,10 @@ Prerequisites
 	tqdm)
 
 CSV Format
-    Row one should consist of headers for the columns. Do not put data in this row.
-    Column one should contain the name of the data. This name is used for the folder and filenames. This will determine
-    the folder that your downloads will be transferred too inside of the NETWORK_LOCATION folder.
-    Column two should have the links to insights, event, or survey data.
+   	 Row one should consist of headers for the columns. Do not put data in this row.
+    	Column one should contain the name of the data. This name is used for the folder and filenames. This will determine
+    	the folder that your downloads will be transferred too inside of the NETWORK_LOCATION folder.
+    	Column two should have the links to insights, event, or survey data.
 
 Versioning
 	Version 1.5
