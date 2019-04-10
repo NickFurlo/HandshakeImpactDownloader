@@ -8,6 +8,7 @@ import shutil
 import threading
 import time
 import tkinter
+import keyring
 from datetime import datetime
 from distutils.util import strtobool
 from pathlib import Path
@@ -30,17 +31,22 @@ def load_config():
     if not my_file.is_file():
         file = open("ImpactDownloader.config", "w+")
         file.write(
-            "[DEFAULT]\nUSERNAME = \nPASSWORD = \nINPUT_CSV_FILE_PATH = \nNUMBER_OF_ROWS = \nDOWNLOAD_LOCATION = "
-            "\nNETWORK_LOCATION =  \nLOG_TO_FILE = \nDELETE_AFTER_DAYS = ")
+            "[DEFAULT]\nUSE_WINDOWS_CREDENTIAL_MANAGER = \nWCM_SERVICE_NAME = \nUSERNAME = \nPASSWORD = \nINPUT_CSV_FILE_PATH = \nNUMBER_OF_ROWS = \nDOWNLOAD_LOCATION = "
+            "\nNETWORK_LOCATION =  \nLOG_TO_FILE = \nDELETE_AFTER_DAYS = \n")
         messagebox.showinfo("Warning", "Config file created. Please add a CSV file path and relaunch the program.")
         driver.close()
         sys.exit()
 
-    # Read config and set variables
+    # Read config file and set global variables
     config.read('ImpactDownloader.config')
-    global username, password, input_file_path, number_of_rows, download_file_path, network_location, log_enabled, days_until_delete
+    global use_windows_credential_manager, username, password, input_file_path, number_of_rows, download_file_path, network_location, log_enabled, days_until_delete, wcm_service_name
+    use_windows_credential_manager = config['DEFAULT']['USE_WINDOWS_CREDENTIAL_MANAGER']
+    wcm_service_name = config['DEFAULT']['WCM_SERVICE_NAME']
     username = config['DEFAULT']['USERNAME']
-    password = config['DEFAULT']['PASSWORD']
+    if use_windows_credential_manager:
+        password = keyring.get_password(wcm_service_name, username)
+    else:
+        password = config['DEFAULT']['PASSWORD']
     input_file_path = config['DEFAULT']['INPUT_CSV_FILE_PATH']
     number_of_rows = int(config['DEFAULT']['NUMBER_OF_ROWS'])
     download_file_path = config['DEFAULT']['DOWNLOAD_LOCATION']
@@ -48,14 +54,14 @@ def load_config():
     log_enabled = config['DEFAULT']['LOG_TO_FILE']
     days_until_delete = config['DEFAULT']['DELETE_AFTER_DAYS']
 
-    # End if there is no CSV path
+    # Quit if there is no CSV path set in the config file
     if input_file_path is "":
         messagebox.showinfo("Warning", "Please enter a CSV file path into the config file and relaunch the program.")
         driver.close()
         sys.exit()
 
 
-# load CSV contents of first 2 columns row 1 through number_of_rows into a dictionary
+# load CSV contents of first 2 columns, and the second row through number_of_rows into a dictionary
 def load_csv():
     with open(input_file_path, mode='r') as infile:
         urls = {rows[0]: rows[1] for rows in itertools.islice(csv.reader(infile), 1, number_of_rows)}
@@ -66,10 +72,10 @@ def load_csv():
 def download_insight_data(url, folder):
     global error_count, download_count
     driver.get(url)
-    # look at insights frame
+    # look at insights iframe in the webpage
     driver.switch_to.frame(find_element(driver, 'xpath', '//*[@id="insights-iframe"]', 'Could not find iframe', True, False, False))
 
-    # send shortcut to open download dialog
+    # wait for page to load and then send shortcut to open download dialog
     wait_for_page('tag_name', 'body')
     body = find_element(driver, 'tag_name', 'body', 'error at body click', True, False, False)
     body.click()
@@ -78,14 +84,12 @@ def download_insight_data(url, folder):
             time.sleep(2)
             body.click()
             body.send_keys(Keys.CONTROL + Keys.SHIFT + 'l')
-            print("Sent Shortcut")
     except:
         error_count += 1
         print("error at shortcut")
     time.sleep(1)
     try:
-
-        # Wait for page
+        # Wait for download pop up to load and click 'all results'
         wait_for_page('name', 'qr-export-modal-limit')
         find_element(driver, 'xpath', '//*[@id="lk-layout-embed"]/div[4]/div/div/form/div[2]/div[4]/div/div[2]/label',
                      "Couldn't find 'all results' radio button", True, False, True)
@@ -96,11 +100,11 @@ def download_insight_data(url, folder):
     try:
         if driver.find_element_by_xpath(
                 '//*[@id="lk-embed-container"]/lk-explore-dataflux/div[2]/lk-expandable-sidebar/ng-transclude/lk-field-picker/div[1]/div/div').text == "Appointments":
-            # Click textbox
+            # Click rows textbox
             driver.find_element_by_xpath(
                 '//*[@id="lk-layout-embed"]/div[4]/div/div/form/div[2]/div[4]/div/div[3]/label').click()
             time.sleep(1)
-            #Clear textbox
+            # Clear rows textbox
             driver.find_element_by_xpath(
                 '//*[@id="lk-layout-embed"]/div[4]/div/div/form/div[2]/div[4]/div/div[3]/div/div[1]/input').clear()
             time.sleep(1)
@@ -132,13 +136,14 @@ def download_insight_data(url, folder):
         download_count += 1
         wait_for_file(filename)
     except:
+        # If download is missed, add the url to the missed_urls list to be re-tried.
         missed_urls[''] = url
         print(str(url))
         print("download missed")
 
 
 # Downloads survey results
-def download_survey_data(url, driver):
+def download_survey_data(url, driver, folder):
     global download_count
     time.sleep(1)
     driver.get(url)
@@ -150,7 +155,7 @@ def download_survey_data(url, driver):
     # Click download link
     driver.find_element_by_xpath('//*[@id="download-wait-modal"]/div[2]/div/div[2]/div/span[1]/p[1]/a').click()
     os.chdir(download_file_path)
-    # Wait for file to finish downlaoding.
+    # Wait for file to finish downloading.
     while next(glob.iglob('*.crdownload'), False) is not False:
         time.sleep(1)
     print('survey data done downloading')
@@ -158,12 +163,12 @@ def download_survey_data(url, driver):
     # Rename survey file.
     files = glob.glob('survey_response_download*.csv')
     for file in files:
-        os.rename(file, "appt_survey" + datetime.now().strftime("_%Y-%m-%d") + ".csv")
+        os.rename(file, folder + datetime.now().strftime("_%Y-%m-%d") + ".csv")
     driver.close()
 
 
 # Downloads event information
-def download_event_data(url, driver):
+def download_event_data(url, driver, folder):
     global download_count
     time.sleep(1)
     driver.get(url)
@@ -183,43 +188,44 @@ def download_event_data(url, driver):
     # Rename event file
     files = glob.glob('event_download*.csv')
     for file in files:
-        os.rename(file, "event_detail" + datetime.now().strftime("_%Y-%m-%d") + ".csv")
+        os.rename(file, folder + datetime.now().strftime("_%Y-%m-%d") + ".csv")
     driver.close()
 
 
 # download_data for all URL's in dictionary. Uses multi-threading to keep multiple drivers alive and working at the
 # same time.
 def download_all(my_dict):
+    my_dict_reverse = {v: k for k, v in my_dict.items()}
     for i in tqdm(my_dict):
 
         if 'insights_page' in my_dict.get(i):
-            my_dict_reverse = {v: k for k, v in my_dict.items()}
+            # Passes reversed URL dictionary at i for folder name
             download_insight_data(my_dict[i], my_dict_reverse[my_dict[i]])
         elif 'surveys' in my_dict.get(i):
+            # Change download folder if it is set
             if download_file_path is not "":
                 driver2 = change_download_location(download_file_path)
             else:
                 driver2 = webdriver.Chrome()
             login(driver2)
-            survey_thread = threading.Thread(target=download_survey_data, args=(my_dict[i], driver2,))
+            survey_thread = threading.Thread(target=download_survey_data, args=(my_dict[i], driver2, my_dict_reverse[my_dict[i]],))
             survey_thread.daemon = True
             survey_thread.start()
 
         elif 'events' in my_dict.get(i):
+            # Change download folder if it is set
             if download_file_path is not "":
                 driver2 = change_download_location(download_file_path)
             else:
                 driver2 = webdriver.Chrome()
             login(driver2)
-            event_thread = threading.Thread(target=download_event_data, args=(my_dict[i], driver2,))
+            event_thread = threading.Thread(target=download_event_data, args=(my_dict[i], driver2, my_dict_reverse[my_dict[i]],))
             event_thread.daemon = True
             event_thread.start()
 
         else:
             print("could not download" + str(i))
-
     print("Errors: " + str(error_count))
-
     return
 
 
@@ -393,11 +399,10 @@ def find_element(driver, type, name, message, increase_error, recurse, click):
 def wait_for_downloads():
     # wait for downloads.
     os.chdir(download_file_path)
-    print("Waiting for downloads to finish")
     wait_count = 0
     while len(glob.glob('*.crdownload')) > 0:
         print("Waiting for downloads to finish...")
-        time.sleep(6)
+        time.sleep(15)
         wait_count += 1
         if wait_count > 1000:
             time.sleep(5)
@@ -421,7 +426,7 @@ def copy_to_network_drive():
             full_path = full_path.replace("\\", "/")
             network_paths.append(full_path)
             shutil.copy2(file, full_path)
-            print("Copied: " + full_path)
+            print("Copied File To: " + full_path)
             copied += 1
     except Exception as e:
         print("Could not copy files to network location")
@@ -488,7 +493,7 @@ def delete_old_network_files(cutoff):
 
 # Initialize variables and begins downloads.
 def main():
-    global driver, input_file_path, number_of_rows, download_count, missed_urls, log_to_file
+    global driver, input_file_path, number_of_rows, download_count, missed_urls, log_to_file, use_windows_credential_manager, wcm_service_name
     download_count = 0
     input_file_path = ""
     number_of_rows = 0
